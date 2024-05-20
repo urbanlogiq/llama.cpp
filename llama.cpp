@@ -1222,12 +1222,17 @@ struct llama_file {
     // use FILE * so we don't have to re-open the file to mmap
     FILE * fp;
     size_t size;
+    char * buffer;
 
     llama_file(const char * fname, const char * mode) {
         fp = ggml_fopen(fname, mode);
         if (fp == NULL) {
             throw std::runtime_error(format("failed to open %s: %s", fname, strerror(errno)));
         }
+
+        buffer = (char *)malloc(1048576);
+        setbuffer(fp, buffer, 1048576);
+
         seek(0, SEEK_END);
         size = tell();
         seek(0, SEEK_SET);
@@ -1291,6 +1296,10 @@ struct llama_file {
         if (fp) {
             std::fclose(fp);
         }
+
+        if (buffer) {
+            free(buffer);
+        }
     }
 };
 using llama_files = std::vector<std::unique_ptr<llama_file>>;
@@ -1302,7 +1311,7 @@ struct llama_mmap {
     llama_mmap(const llama_mmap &) = delete;
 
 #ifdef _POSIX_MAPPED_FILES
-    static constexpr bool SUPPORTED = true;
+    static constexpr bool SUPPORTED = false;
 
     // list of mapped fragments (first_offset, last_offset)
     std::vector<std::pair<size_t, size_t>> mapped_fragments;
@@ -14783,7 +14792,7 @@ static void llama_model_quantize_internal(const std::string & fname_inp, const s
     // mmap consistently increases speed Linux, and also increases speed on Windows with
     // hot cache. It may cause a slowdown on macOS, possibly related to free memory.
 #if defined(__linux__) || defined(_WIN32)
-    constexpr bool use_mmap = true;
+    constexpr bool use_mmap = false;
 #else
     constexpr bool use_mmap = false;
 #endif
