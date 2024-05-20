@@ -164,6 +164,16 @@ struct llama_file::impl {
         if (fp == NULL) {
             throw std::runtime_error(format("failed to open %s: %s", fname, strerror(errno)));
         }
+        // Increase stdio buffer to improve remote FS performance
+        // Use a 1MB buffer similar to our previous patch
+        char * local_buffer = (char *) std::malloc(1048576);
+        if (local_buffer != nullptr) {
+            setbuffer(fp, local_buffer, 1048576);
+            // store pointer so we can free in dtor
+            buffer = local_buffer;
+        } else {
+            buffer = nullptr;
+        }
         seek(0, SEEK_END);
         size = tell();
         seek(0, SEEK_SET);
@@ -234,11 +244,15 @@ struct llama_file::impl {
         if (fp) {
             std::fclose(fp);
         }
+        if (buffer) {
+            std::free(buffer);
+        }
     }
 #endif
 
     FILE * fp;
     size_t size;
+    char * buffer = nullptr;
 };
 
 llama_file::llama_file(const char * fname, const char * mode) : pimpl(std::make_unique<impl>(fname, mode)) {}
@@ -446,11 +460,8 @@ void * llama_mmap::addr() const { return pimpl->addr; }
 
 void llama_mmap::unmap_fragment(size_t first, size_t last) { pimpl->unmap_fragment(first, last); }
 
-#if defined(_POSIX_MEMLOCK_RANGE) || defined(_WIN32)
-const bool llama_mmap::SUPPORTED  = true;
-#else
+// Force mmap unsupported to disable mmap-based loading by default
 const bool llama_mmap::SUPPORTED  = false;
-#endif
 
 // llama_mlock
 
