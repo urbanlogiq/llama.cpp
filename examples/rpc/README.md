@@ -42,7 +42,7 @@ cmake --build . --config Release
 Then, start the `rpc-server` with the backend:
 
 ```bash
-$ bin/rpc-server 0.0.0.0 50052
+$ bin/rpc-server -p 50052
 create_backend: using CUDA backend
 ggml_cuda_init: GGML_CUDA_FORCE_MMQ:   no
 ggml_cuda_init: CUDA_USE_TENSOR_CORES: yes
@@ -53,7 +53,7 @@ Starting RPC server on 0.0.0.0:50052
 
 When using the CUDA backend, you can specify the device with the `CUDA_VISIBLE_DEVICES` environment variable, e.g.:
 ```bash
-$ CUDA_VISIBLE_DEVICES=0 bin/rpc-server 0.0.0.0 50052
+$ CUDA_VISIBLE_DEVICES=0 bin/rpc-server -p 50052
 ```
 This way you can run multiple `rpc-server` instances on the same host, each with a different CUDA device.
 
@@ -70,5 +70,5 @@ cmake --build . --config Release
 Finally, use the `--rpc` option to specify the host and port of each `rpc-server`:
 
 ```bash
-$ bin/main -m ../models/tinyllama-1b/ggml-model-f16.gguf -p "Hello, my name is" --repeat-penalty 1.0 -n 64 --rpc 192.168.88.10:50052,192.168.88.11:50052 -ngl 99
+$ bin/llama-cli -m ../models/tinyllama-1b/ggml-model-f16.gguf -p "Hello, my name is" --repeat-penalty 1.0 -n 64 --rpc 192.168.88.10:50052,192.168.88.11:50052 -ngl 99
 ```
