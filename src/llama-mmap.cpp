@@ -164,6 +164,9 @@ struct llama_file::impl {
         if (fp == NULL) {
             throw std::runtime_error(format("failed to open %s: %s", fname, strerror(errno)));
         }
+        buffer = (char *)malloc(1048576);
+        setbuffer(fp, buffer, 1048576);
+
         seek(0, SEEK_END);
         size = tell();
         seek(0, SEEK_SET);
@@ -234,11 +237,15 @@ struct llama_file::impl {
         if (fp) {
             std::fclose(fp);
         }
+        if (buffer) {
+            free(buffer);
+        }
     }
 #endif
 
     FILE * fp;
     size_t size;
+    char * buffer;
 };
 
 llama_file::llama_file(const char * fname, const char * mode) : pimpl(std::make_unique<impl>(fname, mode)) {}
@@ -447,7 +454,7 @@ void * llama_mmap::addr() const { return pimpl->addr; }
 void llama_mmap::unmap_fragment(size_t first, size_t last) { pimpl->unmap_fragment(first, last); }
 
 #if defined(_POSIX_MEMLOCK_RANGE) || defined(_WIN32)
-const bool llama_mmap::SUPPORTED  = true;
+const bool llama_mmap::SUPPORTED  = false;
 #else
 const bool llama_mmap::SUPPORTED  = false;
 #endif
